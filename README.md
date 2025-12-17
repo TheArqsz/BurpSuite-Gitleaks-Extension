@@ -7,9 +7,9 @@ A native, high-performance Java extension for Burp Suite that brings the power o
 >
 > This is an **unofficial** project. I am not a developer for Gitleaks, nor am I affiliated with the Gitleaks team. I am simply a security engineer who uses gitleaks daily and wanted a native integration for Burp Suite that didn't rely on external binaries or Python wrappers.
 
-## Why another secret scanner? (vs. TruffleHog)
+## Why another secret scanner? (vs. [TruffleHog](https://github.com/trufflesecurity/trufflehog-burp-suite-extension))
 
-While the TruffleHog extension exists, this project takes a different architectural approach focused on performance and native integration:
+While [the TruffleHog extension](https://github.com/trufflesecurity/trufflehog-burp-suite-extension) exists, this project takes a different architectural approach focused on performance and native integration:
 
 1. **Pure Java** - this runs entirely within the Burp JVM using Montoya API. There is no need to install Go, Python, or manage external `gitleaks` binaries/processes.
 2. **Safety (RE2J)** - unlike standard Java Regex (which can cause some issues with scanning large minified JS files), this extension uses Google's *RE2J*. This guarantees linear-time regex execution, ensuring Burp never freezes on complex inputs.
