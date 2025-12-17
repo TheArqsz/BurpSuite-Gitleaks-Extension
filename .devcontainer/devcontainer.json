@@ -1,0 +1,29 @@
+{
+    "name": "Burp Extension Dev (Java 21)",
+    "image": "mcr.microsoft.com/devcontainers/java:21",
+    "runArgs": [
+        "--add-host=host.docker.internal:host-gateway"
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/java:1": {
+            "version": "none",
+            "installMaven": "true",
+            "installGradle": "false"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "vscjava.vscode-java-pack",
+                "redhat.java",
+                "vscjava.vscode-maven",
+                "vscjava.vscode-java-dependency"
+            ],
+            "settings": {
+                "java.configuration.updateBuildConfiguration": "automatic",
+                "java.compile.nullAnalysis.mode": "automatic"
+            }
+        }
+    },
+    "remoteUser": "vscode"
+}

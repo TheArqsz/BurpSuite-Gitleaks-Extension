@@ -1,0 +1,81 @@
+name: Build and Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  release-and-publish:
+    name: Release and Publish
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+
+      - name: Set up JDK 17 and cache Maven dependencies
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Generate Changelog
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: "CHANGELOG.md"
+          tag-prefix: "v"
+          release-count: 0
+          preset: conventionalcommits
+          skip-commit: true
+          git-push: false
+    
+      - name: Bump Maven Version
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        run: |
+          echo "Bumping version to ${{ steps.changelog.outputs.version }}"
+          mvn versions:set -DnewVersion=${{ steps.changelog.outputs.version }} -DgenerateBackupPoms=false
+
+      - name: Commit & Push Version Bump
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pom.xml CHANGELOG.md
+          git commit -m "chore(release): bump version to ${{ steps.changelog.outputs.version }}"
+          git push
+
+      - name: Build project with Maven
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        run: mvn clean package -DskipTests -B
+
+      - name: Rename artifact
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        id: rename_artifact
+        run: |
+          cp ./target/burp-gitleaks-integration-*.jar ./target/burp-gitleaks-integration.jar
+          cp ./target/burp-gitleaks-integration-*.jar ./target/burp-gitleaks-integration-${{ steps.changelog.outputs.tag }}.jar
+        
+      - name: Create GitHub Release
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./target/burp-gitleaks-integration-${{ steps.changelog.outputs.tag }}.jar
+            ./target/burp-gitleaks-integration.jar
+          draft: false
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: true
+          body: ${{ steps.changelog.outputs.clean_changelog }}
