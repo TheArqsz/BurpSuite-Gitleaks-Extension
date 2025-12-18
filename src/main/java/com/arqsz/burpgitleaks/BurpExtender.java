@@ -5,22 +5,34 @@ import java.util.List;
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
+import com.arqsz.burpgitleaks.scan.GitleaksHttpHandler;
 import com.arqsz.burpgitleaks.scan.GitleaksScanCheck;
 import com.arqsz.burpgitleaks.ui.GitleaksContextMenuProvider;
+import com.arqsz.burpgitleaks.ui.IssuesTab;
 import com.arqsz.burpgitleaks.ui.SettingsTab;
 import com.arqsz.burpgitleaks.ui.Toast;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.BurpSuiteEdition;
+import burp.api.montoya.core.Registration;
 import burp.api.montoya.scanner.scancheck.ScanCheckType;
 
 public class BurpExtender implements BurpExtension {
 
     private final String EXTENSION_NAME = "Gitleaks Integration";
     private final String EXTENSION_TAB_NAME = EXTENSION_NAME + " Settings";
+    private final String ISSUES_TAB_NAME = EXTENSION_NAME + " Issues";
+
+    private MontoyaApi api;
+    private IssuesTab issuesTab;
+    private Registration issuesTabRegistration;
+
+    private GitleaksHttpHandler communityHttpHandler;
 
     @Override
     public void initialize(MontoyaApi api) {
+        this.api = api;
         api.extension().setName(EXTENSION_NAME);
 
         PluginSettings settings = new PluginSettings(api.persistence().preferences());
@@ -35,6 +47,12 @@ public class BurpExtender implements BurpExtension {
         api.extension().registerUnloadingHandler(() -> {
             components.settingsTab().shutdown();
             components.menuProvider().shutdown();
+
+            if (communityHttpHandler != null) {
+                communityHttpHandler.shutdown();
+            }
+
+            deregisterIssuesTab();
         });
 
     }
@@ -42,7 +60,8 @@ public class BurpExtender implements BurpExtension {
     private record ConfigResult(GitleaksConfiguration config, String errorMsg) {
     }
 
-    private record RegisteredComponents(SettingsTab settingsTab, GitleaksContextMenuProvider menuProvider) {
+    private record RegisteredComponents(SettingsTab settingsTab, GitleaksContextMenuProvider menuProvider,
+            IssuesTab issuesTab) {
     }
 
     private ConfigResult loadInitialConfiguration(MontoyaApi api, PluginSettings settings) {
@@ -72,16 +91,49 @@ public class BurpExtender implements BurpExtension {
 
     private RegisteredComponents registerComponents(MontoyaApi api, GitleaksConfiguration config,
             PluginSettings settings) {
-        GitleaksScanCheck scanCheck = new GitleaksScanCheck(api, config, settings);
-        api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
+        this.issuesTab = new IssuesTab(api, ISSUES_TAB_NAME);
+
+        if (settings.isShowIssuesTab()) {
+            registerIssuesTab();
+        }
+
+        GitleaksScanCheck scanCheck = new GitleaksScanCheck(api, config, settings, issuesTab);
+
+        BurpSuiteEdition edition = api.burpSuite().version().edition();
+
+        if (edition == BurpSuiteEdition.COMMUNITY_EDITION) {
+            api.logging().logToOutput("Community Edition detected: Activating manual traffic handler.");
+            this.communityHttpHandler = new GitleaksHttpHandler(api, scanCheck, settings);
+            api.http().registerHttpHandler(communityHttpHandler);
+        } else {
+            api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
+        }
 
         GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
-        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules());
+        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), (visible) -> {
+            if (visible)
+                registerIssuesTab();
+            else
+                deregisterIssuesTab();
+        });
         api.userInterface().registerSuiteTab(EXTENSION_TAB_NAME, settingsTab);
 
-        return new RegisteredComponents(settingsTab, menuProvider);
+        return new RegisteredComponents(settingsTab, menuProvider, issuesTab);
+    }
+
+    private void registerIssuesTab() {
+        if (issuesTabRegistration == null && issuesTab != null) {
+            issuesTabRegistration = api.userInterface().registerSuiteTab(ISSUES_TAB_NAME, issuesTab);
+        }
+    }
+
+    private void deregisterIssuesTab() {
+        if (issuesTabRegistration != null) {
+            issuesTabRegistration.deregister();
+            issuesTabRegistration = null;
+        }
     }
 
     private void handleStartupFeedback(MontoyaApi api, GitleaksConfiguration config, SettingsTab settingsTab,

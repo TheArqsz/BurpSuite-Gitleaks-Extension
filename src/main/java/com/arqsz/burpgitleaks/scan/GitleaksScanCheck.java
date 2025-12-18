@@ -13,6 +13,7 @@ import com.arqsz.burpgitleaks.config.GitleaksAllowlist;
 import com.arqsz.burpgitleaks.config.GitleaksRule;
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
+import com.arqsz.burpgitleaks.ui.IssuesTab;
 import com.arqsz.burpgitleaks.utils.Entropy;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
@@ -47,6 +48,8 @@ public class GitleaksScanCheck implements PassiveScanCheck {
     private volatile ScanState scanState;
     private final PluginSettings settings;
     private final Logging logging;
+    private final MontoyaApi api;
+    private final IssuesTab issuesTab;
 
     private record ScanState(
             List<GitleaksRule> rules,
@@ -54,9 +57,12 @@ public class GitleaksScanCheck implements PassiveScanCheck {
             Trie keywordTrie) {
     }
 
-    public GitleaksScanCheck(MontoyaApi api, GitleaksConfiguration config, PluginSettings settings) {
+    public GitleaksScanCheck(MontoyaApi api, GitleaksConfiguration config, PluginSettings settings,
+            IssuesTab issuesTab) {
+        this.api = api;
         this.logging = api.logging();
         this.settings = settings;
+        this.issuesTab = issuesTab;
         updateConfig(config);
     }
 
@@ -73,6 +79,13 @@ public class GitleaksScanCheck implements PassiveScanCheck {
 
     @Override
     public AuditResult doCheck(HttpRequestResponse baseRequestResponse) {
+        if (settings.isScanInScopeOnly()) {
+            String url = baseRequestResponse.request().url();
+            if (!api.scope().isInScope(url)) {
+                return AuditResult.auditResult(Collections.emptyList());
+            }
+        }
+
         var response = baseRequestResponse.response();
         if (response == null)
             return AuditResult.auditResult(Collections.emptyList());
@@ -156,8 +169,6 @@ public class GitleaksScanCheck implements PassiveScanCheck {
 
             if (rule.getPathRegex() != null) {
                 if (!rule.getPathRegex().matcher(requestPath).find()) {
-                    logging.logToOutput(
-                            "Applying path regex " + rule.getPathRegex() + " for path " + requestPath);
                     continue;
                 }
             }
@@ -279,7 +290,7 @@ public class GitleaksScanCheck implements PassiveScanCheck {
             markers = contextMarkers;
         }
 
-        return AuditIssue.auditIssue(
+        AuditIssue issue = AuditIssue.auditIssue(
                 "Secret leakage: " + rule.getId(),
                 description,
                 ISSUE_REMEDIATION,
@@ -290,6 +301,12 @@ public class GitleaksScanCheck implements PassiveScanCheck {
                 ISSUE_BACKGROUND,
                 AuditIssueSeverity.HIGH,
                 baseReq.withResponseMarkers(markers));
+
+        if (settings.isShowIssuesTab()) {
+            issuesTab.addIssue(issue);
+        }
+
+        return issue;
     }
 
     private boolean isAllowed(List<GitleaksAllowlist> allowlists, String secret, String fullMatch, String line,

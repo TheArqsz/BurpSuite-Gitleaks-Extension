@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -65,13 +66,15 @@ public class SettingsTab extends JPanel {
             g2.dispose();
         }
     };
+    private final Consumer<Boolean> onIssuesTabVisibilityChange;
 
     public SettingsTab(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings,
-            List<GitleaksRule> initialRules) {
+            List<GitleaksRule> initialRules, Consumer<Boolean> onIssuesTabVisibilityChange) {
         this.api = api;
         this.scanCheck = scanCheck;
         this.settings = settings;
         this.currentRules = initialRules;
+        this.onIssuesTabVisibilityChange = onIssuesTabVisibilityChange;
         this.rulesModel = new RulesTableModel(initialRules, settings.getDisabledRules());
         this.executor = Executors.newSingleThreadExecutor();
 
@@ -319,6 +322,15 @@ public class SettingsTab extends JPanel {
 
         c.gridy++;
         c.gridwidth = 2;
+        JCheckBox scopeCb = new JCheckBox("Scan only in-scope items");
+        scopeCb.setToolTipText(
+                "If checked, the extension will ignore traffic that is not in the Burp Suite Target Scope.");
+        scopeCb.setSelected(settings.isScanInScopeOnly());
+        scopeCb.addActionListener(e -> settings.setScanInScopeOnly(scopeCb.isSelected()));
+        form.add(scopeCb, c);
+
+        c.gridy++;
+        c.gridwidth = 2;
         JCheckBox allowCb = new JCheckBox("Ignore 'gitleaks:allow' comments");
         allowCb.setToolTipText(
                 "If checked, secrets will be reported even if they are marked as allowed in the source code.");
@@ -337,6 +349,20 @@ public class SettingsTab extends JPanel {
         form.add(Box.createVerticalStrut(10), c);
         c.gridy++;
         form.add(createHeader("Reporting & Display"), c);
+
+        c.gridy++;
+        c.gridwidth = 2;
+        JCheckBox issuesTabCb = new JCheckBox(
+                "[Experimental] Enable 'Gitleaks Issues' tab (Community Edition workaround)");
+        issuesTabCb.setToolTipText("Displays a custom table of findings as a separate top-level tab.");
+        issuesTabCb.setSelected(settings.isShowIssuesTab());
+        issuesTabCb.addActionListener(e -> {
+            boolean enabled = issuesTabCb.isSelected();
+            settings.setShowIssuesTab(enabled);
+
+            onIssuesTabVisibilityChange.accept(enabled);
+        });
+        form.add(issuesTabCb, c);
 
         c.gridy++;
         c.gridwidth = 1;
