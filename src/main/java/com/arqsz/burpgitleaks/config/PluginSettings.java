@@ -13,6 +13,10 @@ public class PluginSettings {
     private static final String KEY_REDACT_LEVEL = "gitleaks_redact_level";
     private static final String KEY_IGNORE_ALLOW = "gitleaks_ignore_allow";
     private static final String KEY_DEBUG_LOGGING = "gitleaks_debug_logging";
+    private static final String KEY_SCAN_SCOPE_ONLY = "gitleaks_scan_scope_only";
+    private static final String KEY_SHOW_ISSUES_TAB = "gitleaks_show_issues_tab";
+
+    private static final int DEFAULT_REDACT_LEVEL = 50;
 
     private final Preferences prefs;
 
@@ -58,7 +62,7 @@ public class PluginSettings {
 
     public int getRedactionLevel() {
         Integer level = prefs.getInteger(KEY_REDACT_LEVEL);
-        return level == null ? 70 : level;
+        return level == null ? DEFAULT_REDACT_LEVEL : level;
     }
 
     public void setRedactionLevel(int level) {
@@ -79,5 +83,21 @@ public class PluginSettings {
 
     public void setDebugEnabled(boolean debug) {
         prefs.setBoolean(KEY_DEBUG_LOGGING, debug);
+    }
+
+    public boolean isScanInScopeOnly() {
+        return Boolean.TRUE.equals(prefs.getBoolean(KEY_SCAN_SCOPE_ONLY));
+    }
+
+    public void setScanInScopeOnly(boolean enabled) {
+        prefs.setBoolean(KEY_SCAN_SCOPE_ONLY, enabled);
+    }
+
+    public boolean isShowIssuesTab() {
+        return Boolean.TRUE.equals(prefs.getBoolean(KEY_SHOW_ISSUES_TAB));
+    }
+
+    public void setShowIssuesTab(boolean show) {
+        prefs.setBoolean(KEY_SHOW_ISSUES_TAB, show);
     }
 }
