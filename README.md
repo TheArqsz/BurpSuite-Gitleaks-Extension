@@ -52,7 +52,9 @@ graph TD
 ## Features
 
 - **Native Montoya API** - built on the modern Burp API for future-proof compatibility.
-- **Base64 support** - automatically detects and **recursively** scans Base64 encoded payloads.
+- **Community Edition support** - automatically detects Burp Suite Community Edition and registers a manual traffic handler, ensuring traffic is scanned even without the Pro/Enterprise-only Passive Scanner.
+- **Dedicated Issues tab** - an optional, experimental, standalone tab to view and manage findings separately from the main Burp Dashboard (which can be useful in the Community Edition).
+- **Base64 support** - automatically detects and **recursively** scans Base64 encoded payloads (up to depth 2).
 - **Rule management**:
     - Auto-fetch the latest official Gitleaks rules.
     - Load custom/company-specific `.toml` configs.
@@ -80,6 +82,7 @@ Navigate to the `Gitleaks Integration Settings` tab in Burp Suite.
 - **Rule Source** - click "Update" to pull the latest definitions from the official Gitleaks repository.
 - **Custom Config** - specify a local path to a custom `gitleaks.toml` to override or extend the defaults.
 - **Redaction** - adjust the percentage of the secret masked in the Burp Issue view.
+- **Issues Tab** - Toggle the experimental "Issues" tab.
 
 ## Building from source
 
