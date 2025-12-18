@@ -68,7 +68,13 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
         }
 
         for (HttpRequestResponse item : items) {
-            AuditResult result = scanCheck.doCheck(item);
+            AuditResult result;
+            try {
+                result = scanCheck.doCheck(item);
+            } catch (Exception e) {
+                api.logging().logToError("Error during manual Gitleaks scan: " + e.getMessage());
+                continue;
+            }
 
             for (AuditIssue newIssue : result.auditIssues()) {
                 if (isAlreadyReported(newIssue)) {

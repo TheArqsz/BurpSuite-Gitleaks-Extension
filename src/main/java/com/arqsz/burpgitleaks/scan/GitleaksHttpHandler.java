@@ -49,7 +49,13 @@ public class GitleaksHttpHandler implements HttpHandler {
                 responseReceived.initiatingRequest(),
                 responseReceived);
 
-        executor.submit(() -> runScan(reqRes));
+        executor.submit(() -> {
+            try {
+                runScan(reqRes);
+            } catch (Exception e) {
+                api.logging().logToError("Error running secret scan" + e.getMessage());
+            }
+        });
 
         return ResponseReceivedAction.continueWith(responseReceived);
     }
