@@ -10,6 +10,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +25,9 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
@@ -255,9 +259,33 @@ public class SettingsTab extends JPanel {
         searchPanel.add(searchField, BorderLayout.CENTER);
         p.add(searchPanel, BorderLayout.NORTH);
 
-        JTable table = new JTable(rulesModel);
+        JTable table = new JTable(rulesModel) {
+            @Override
+            public String getToolTipText(java.awt.event.MouseEvent e) {
+                java.awt.Point p = e.getPoint();
+                int row = rowAtPoint(p);
+                int col = columnAtPoint(p);
+
+                if (row >= 0 && col >= 0) {
+                    int modelCol = convertColumnIndexToModel(col);
+                    if (modelCol == 1) {
+                        int modelRow = convertRowIndexToModel(row);
+                        Object value = getModel().getValueAt(modelRow, modelCol);
+                        return value != null ? value.toString() : null;
+                    }
+                }
+                return super.getToolTipText(e);
+            }
+        };
         table.setFillsViewportHeight(true);
         table.setRowHeight(24);
+
+        JPopupMenu popup = new JPopupMenu();
+        addCopyMenuItem(popup, table, "Copy Source", 1);
+        addCopyMenuItem(popup, table, "Copy Rule ID", 2);
+        addCopyMenuItem(popup, table, "Copy Description", 3);
+
+        table.setComponentPopupMenu(popup);
 
         TableRowSorter<RulesTableModel> sorter = new TableRowSorter<>(rulesModel);
         table.setRowSorter(sorter);
@@ -286,7 +314,7 @@ public class SettingsTab extends JPanel {
 
         table.getColumnModel().getColumn(0).setMaxWidth(60);
         table.getColumnModel().getColumn(1).setPreferredWidth(100);
-        table.getColumnModel().getColumn(1).setMaxWidth(150);
+        table.getColumnModel().getColumn(1).setMaxWidth(350);
         table.getColumnModel().getColumn(2).setPreferredWidth(200);
         table.getColumnModel().getColumn(3).setPreferredWidth(400);
 
@@ -304,6 +332,22 @@ public class SettingsTab extends JPanel {
         p.add(bottomPanel, BorderLayout.SOUTH);
 
         return p;
+    }
+
+    private void addCopyMenuItem(JPopupMenu popup, JTable table, String label, int modelColumnIndex) {
+        JMenuItem item = new JMenuItem(label);
+        item.addActionListener(e -> {
+            int viewRow = table.getSelectedRow();
+            if (viewRow != -1) {
+                int modelRow = table.convertRowIndexToModel(viewRow);
+                Object value = rulesModel.getValueAt(modelRow, modelColumnIndex);
+                if (value != null) {
+                    Toolkit.getDefaultToolkit().getSystemClipboard()
+                            .setContents(new StringSelection(value.toString()), null);
+                }
+            }
+        });
+        popup.add(item);
     }
 
     private JPanel createOptionsPanel() {
