@@ -7,6 +7,8 @@ A native, high-performance Java extension for Burp Suite that brings the power o
 >
 > This is an **unofficial** project. I am not a developer for Gitleaks, nor am I affiliated with the Gitleaks team. I am simply a security engineer who uses gitleaks daily and wanted a native integration for Burp Suite that didn't rely on external binaries or Python wrappers.
 
+![Issues tab PRO](assets/issues_tab_pro.png)
+
 ## Why another secret scanner? (vs. [TruffleHog](https://github.com/trufflesecurity/trufflehog-burp-suite-extension))
 
 While [the TruffleHog extension](https://github.com/trufflesecurity/trufflehog-burp-suite-extension) exists, this project takes a different architectural approach focused on performance and native integration:
@@ -60,6 +62,16 @@ graph TD
     - Load custom/company-specific `.toml` configs.
     - Disable specific rules via the UI.
 - **Context menu** - right-click any request in Burp to "Force Rescan" specific items.
+
+![Rules manager](assets/rules_manager.png)
+
+![Main configuration screen](assets/main_configuration.png)
+
+![Options page](assets/options_page.png)
+
+![Context menu](assets/context_menu.png)
+
+![Dedicated issues tab](assets/dedicated_issues_tab.png)
 
 ## Credits & Acknowledgments
 
