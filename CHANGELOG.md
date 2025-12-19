@@ -1,3 +1,10 @@
+## [0.3.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.2.0...v0.3.0) (2025-12-19)
+
+
+### Features
+
+* **ui:** add tooltips and copy actions to rules manager table ([a978ab6](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/a978ab65c4955c7205cdfd2aceada57aa428294c))
+
 ## [0.2.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.1.0...v0.2.0) (2025-12-18)
 
 
