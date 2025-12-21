@@ -1,0 +1,27 @@
+[aws-access-token]
+name = "AWS Identity Check"
+type = "guide"
+body = """
+Step 1: Locate the Full Credentials
+The scanner identified a potential AWS credential: {{SECRET}}
+
+To verify this, you need the full pair:
+1. AWS_ACCESS_KEY_ID (starts with AKIA, ASIA, etc.)
+2. AWS_SECRET_ACCESS_KEY (approx. 40 random characters)
+
+Step 2: Export Variables
+Open your terminal and set the credentials (replace the placeholders):
+
+export AWS_ACCESS_KEY_ID={{SECRET}}  # (Or the corresponding ID if this is the secret)
+export AWS_SECRET_ACCESS_KEY=YOUR_FOUND_SECRET_KEY
+
+Step 3: Verify Identity
+Run the following command to check if the keys are active:
+
+aws sts get-caller-identity
+
+Step 4: Analyze Response
+- JSON with "Account" & "Arn": VALID (The keys are active)
+- "InvalidClientTokenId": INVALID (The keys do not exist)
+- "SignatureDoesNotMatch": INVALID (The ID/Secret pair is incorrect)
+"""

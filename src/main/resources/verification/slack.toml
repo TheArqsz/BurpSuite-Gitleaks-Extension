@@ -1,0 +1,13 @@
+[slack-webhook-url]
+name = "Check for missing_text_or_fallback_or_attachments"
+type = "http"
+method = "POST"
+url = "{{SECRET}}"
+body = """
+{
+  "text": "This is a test message to verify the Slack webhook URL."
+}
+"""
+
+[slack-webhook-url.headers]
+Content-Type = "application/json"
