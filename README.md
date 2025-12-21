@@ -56,6 +56,7 @@ graph TD
 - **Native Montoya API** - built on the modern Burp API for future-proof compatibility.
 - **Community Edition support** - automatically detects Burp Suite Community Edition and registers a manual traffic handler, ensuring traffic is scanned even without the Pro/Enterprise-only Passive Scanner.
 - **Dedicated Issues tab** - an optional, experimental, standalone tab to view and manage findings separately from the main Burp Dashboard (which can be useful in the Community Edition).
+- **Safe verification** - integrated context menu actions to verify secrets via Burp Repeater or step-by-step guides without triggering automatic active scanning.
 - **Base64 support** - automatically detects and **recursively** scans Base64 encoded payloads (up to depth 2).
 - **Rule management**:
     - Auto-fetch the latest official Gitleaks rules.
@@ -73,6 +74,18 @@ graph TD
 
 ![Dedicated issues tab](assets/dedicated_issues_tab.png)
 
+## Secret verification
+
+The extension provides a safe, "human-in-the-loop" workflow to confirm if a detected secret is active. It does not automatically send traffic to third parties to avoid accidental account lockouts or unauthorized scanning.
+
+Right-click any finding in the Gitleaks Issues tab or Burp's Issues pane to access verification options:
+
+- **Send to Repeater** - for standard API keys (e.g. Stripe, Slack) the extension builds a valid HTTP request (with headers/body pre-filled) and opens it in a new Repeater tab. You just confirm it and click "Send".
+- **Copy verification cURL** - copies the equivalent curl command to your clipboard for quick verification in a terminal.
+- **Show verification steps** - for complex cases (e.g. AWS) that require browser interaction or specific tools, a dialog appears with step-by-step instructions.
+
+Verification templates are defined in `src/main/resources/verification/*.toml` and can be easily extended by the community.
+
 ## Credits & Acknowledgments
 
 All credit for the detection logic and rule definitions goes to the Gitleaks Team and the contributors of the [Gitleaks](https://github.com/gitleaks/gitleaks/) project.
@@ -80,6 +93,8 @@ All credit for the detection logic and rule definitions goes to the Gitleaks Tea
 - **Rules** - the default configuration is sourced directly from the Gitleaks repository.
 - **Logic** - the Shannon Entropy calculation and the Aho-Corasick pre-filtering strategy are direct ports/adaptations of the Gitleaks implementation.
 - **License** - this project includes [the original Gitleaks MIT License](src/main/resources/GITLEAKS_LICENSE) regarding the usage of their logic and configuration format.
+
+Verification steps are mostly inspired by [keyhacks](https://github.com/streaak/keyhacks) repository.
 
 ## Installation
 
