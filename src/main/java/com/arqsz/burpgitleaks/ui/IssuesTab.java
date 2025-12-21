@@ -32,9 +32,14 @@ import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableRowSorter;
+
+import com.arqsz.burpgitleaks.utils.IssueUtils;
+import com.arqsz.burpgitleaks.verification.TemplateManager;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.Marker;
@@ -53,18 +58,24 @@ public class IssuesTab extends JPanel {
     private final HttpResponseEditor responseViewer;
     private final JEditorPane advisoryPane;
 
+    private final TemplateManager templateManager;
+    private final VerificationMenuFactory menuFactory;
+
     private String tabTitle;
     private static final String DEFAULT_TAB_TITLE = "Gitleaks Issues";
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss dd MMM yyyy");
 
-    public IssuesTab(MontoyaApi api, String tabTitle) {
+    public IssuesTab(MontoyaApi api, String tabTitle, TemplateManager templateManager) {
         this.api = api;
         if (tabTitle == null || tabTitle.isBlank()) {
             this.tabTitle = DEFAULT_TAB_TITLE;
         } else {
             this.tabTitle = tabTitle;
         }
+
+        this.templateManager = templateManager;
+        this.menuFactory = new VerificationMenuFactory(api, templateManager);
 
         this.model = new IssuesTableModel();
 
@@ -141,6 +152,45 @@ public class IssuesTab extends JPanel {
         popupMenu.add(copyUrl);
         popupMenu.addSeparator();
         popupMenu.add(deleteItem);
+
+        final int staticItemCount = popupMenu.getComponentCount();
+
+        popupMenu.addSeparator();
+
+        popupMenu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                while (popupMenu.getComponentCount() > staticItemCount) {
+                    popupMenu.remove(popupMenu.getComponentCount() - 1);
+                }
+
+                int[] rows = table.getSelectedRows();
+                if (rows.length == 1) {
+                    int modelRow = table.convertRowIndexToModel(rows[0]);
+                    AuditIssue issue = model.getIssue(modelRow);
+
+                    String ruleId = IssueUtils.extractRuleId(issue);
+                    String secret = IssueUtils.extractSecret(issue);
+
+                    List<JMenuItem> verifyItems = menuFactory.createMenuItems(ruleId, secret);
+
+                    if (!verifyItems.isEmpty()) {
+                        popupMenu.addSeparator();
+                        for (JMenuItem item : verifyItems) {
+                            popupMenu.add(item);
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+            }
+        });
 
         table.setComponentPopupMenu(popupMenu);
 
@@ -332,9 +382,6 @@ public class IssuesTab extends JPanel {
         return sb.toString();
     }
 
-    /**
-     * Calculates the Line, Column, and Offset for the finding.
-     */
     private String calculateLocation(AuditIssue issue) {
         if (issue.requestResponses().isEmpty())
             return "Unknown";

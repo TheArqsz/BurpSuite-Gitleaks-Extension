@@ -11,6 +11,7 @@ import com.arqsz.burpgitleaks.ui.GitleaksContextMenuProvider;
 import com.arqsz.burpgitleaks.ui.IssuesTab;
 import com.arqsz.burpgitleaks.ui.SettingsTab;
 import com.arqsz.burpgitleaks.ui.Toast;
+import com.arqsz.burpgitleaks.verification.TemplateManager;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
@@ -27,6 +28,7 @@ public class BurpExtender implements BurpExtension {
     private MontoyaApi api;
     private IssuesTab issuesTab;
     private Registration issuesTabRegistration;
+    private TemplateManager templateManager;
 
     private GitleaksHttpHandler communityHttpHandler;
 
@@ -91,7 +93,8 @@ public class BurpExtender implements BurpExtension {
 
     private RegisteredComponents registerComponents(MontoyaApi api, GitleaksConfiguration config,
             PluginSettings settings) {
-        this.issuesTab = new IssuesTab(api, ISSUES_TAB_NAME);
+        TemplateManager templateManager = new TemplateManager(api.logging());
+        this.issuesTab = new IssuesTab(api, ISSUES_TAB_NAME, templateManager);
 
         if (settings.isShowIssuesTab()) {
             registerIssuesTab();
@@ -109,7 +112,7 @@ public class BurpExtender implements BurpExtension {
             api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
         }
 
-        GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings);
+        GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings, templateManager);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
         SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), (visible) -> {

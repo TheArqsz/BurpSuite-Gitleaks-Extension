@@ -17,7 +17,7 @@ public class CurlGenerator {
         if (tmpl.username() != null) {
             String user = tmpl.username().replace("{{SECRET}}", secret);
             String pass = tmpl.password() != null ? tmpl.password().replace("{{SECRET}}", secret) : "";
-            sb.append("-u \"").append(user).append(":").append(pass).append("\" ");
+            sb.append("-u '").append(user).append(":").append(pass).append("' ");
         }
 
         if (tmpl.body() != null && !tmpl.body().isBlank()) {
@@ -28,7 +28,7 @@ public class CurlGenerator {
         }
 
         String finalUrl = tmpl.url().replace("{{SECRET}}", secret);
-        sb.append("\"").append(finalUrl).append("\"");
+        sb.append("'").append(finalUrl).append("'");
 
         return sb.toString();
     }
