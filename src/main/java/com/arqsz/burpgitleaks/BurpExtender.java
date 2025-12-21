@@ -2,6 +2,8 @@ package com.arqsz.burpgitleaks;
 
 import java.util.List;
 
+import javax.swing.SwingUtilities;
+
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
@@ -44,7 +46,7 @@ public class BurpExtender implements BurpExtension {
 
         var components = registerComponents(api, config, settings);
 
-        handleStartupFeedback(api, config, components.settingsTab(), configResult.errorMsg());
+        handleStartupFeedback(api, config, configResult.errorMsg());
 
         api.extension().registerUnloadingHandler(() -> {
             components.settingsTab().shutdown();
@@ -112,7 +114,8 @@ public class BurpExtender implements BurpExtension {
             api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
         }
 
-        GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings, templateManager);
+        GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings,
+                templateManager);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
         SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), (visible) -> {
@@ -139,13 +142,18 @@ public class BurpExtender implements BurpExtension {
         }
     }
 
-    private void handleStartupFeedback(MontoyaApi api, GitleaksConfiguration config, SettingsTab settingsTab,
+    private void handleStartupFeedback(MontoyaApi api, GitleaksConfiguration config,
             String startupError) {
         if (startupError != null) {
-            Toast.error(settingsTab, startupError);
+            api.logging().logToError("Startup configuration error: " + startupError);
             api.logging().logToOutput("WARNING: Reverted to default rules due to configuration error.");
+            SwingUtilities.invokeLater(() -> {
+                java.awt.Window suiteFrame = api.userInterface().swingUtils().suiteFrame();
+                Toast.error(suiteFrame, EXTENSION_NAME + "startup failed: Reverted to defaults");
+            });
         } else {
-            api.logging().logToOutput(EXTENSION_NAME + " ready. Active Rules: " + config.rules().size());
+            api.logging().logToOutput(String.format("%s (by Arqsz) initialized successfully.", EXTENSION_NAME));
+            api.logging().logToOutput(String.format("Loaded %d active rules.", config.rules().size()));
         }
     }
 }
