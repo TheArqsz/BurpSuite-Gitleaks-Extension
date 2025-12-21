@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.4.0...v0.4.1) (2025-12-21)
+
+
+### Bug Fixes
+
+* **scan:** correct deduplication logic and integrate custom tab ([05bbdf7](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/05bbdf70d7f75068210ab32797f05ddd73640384))
+
 ## [0.4.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.3.0...v0.4.0) (2025-12-21)
 
 
