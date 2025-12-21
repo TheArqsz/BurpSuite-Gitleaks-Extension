@@ -1,0 +1,8 @@
+[stripe-access-token]
+name = "Stripe Live Token"
+type = "http"
+method = "GET"
+url = "https://api.stripe.com/v1/charges"
+
+username = "{{SECRET}}"
+password = ""
