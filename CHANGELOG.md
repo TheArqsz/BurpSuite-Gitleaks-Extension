@@ -1,3 +1,12 @@
+## [0.4.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.3.0...v0.4.0) (2025-12-21)
+
+
+### Features
+
+* **config:** add initial set of verification templates ([bd37cbd](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/bd37cbdd70c82e3f03fcbab1a2ed60a34c5015ae))
+* **ui:** add verification actions to context menu ([4e95af0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/4e95af09ca5c4472e52e6492b984c842945ae965))
+* **verify:** implement template-based verification engine ([5a5b1f0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/5a5b1f0ca976df6dc85f46065714fae91cd6a881))
+
 ## [0.3.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.2.0...v0.3.0) (2025-12-19)
 
 
