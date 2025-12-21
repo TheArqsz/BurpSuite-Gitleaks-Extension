@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
+import com.arqsz.burpgitleaks.scan.GitleaksAuditIssueHandler;
 import com.arqsz.burpgitleaks.scan.GitleaksHttpHandler;
 import com.arqsz.burpgitleaks.scan.GitleaksScanCheck;
 import com.arqsz.burpgitleaks.ui.GitleaksContextMenuProvider;
@@ -44,7 +45,9 @@ public class BurpExtender implements BurpExtension {
         ConfigResult configResult = loadInitialConfiguration(api, settings);
         GitleaksConfiguration config = configResult.config;
 
-        var components = registerComponents(api, config, settings);
+        TemplateManager templateManager = new TemplateManager(api.logging());
+
+        var components = registerComponents(api, config, settings, templateManager);
 
         handleStartupFeedback(api, config, configResult.errorMsg());
 
@@ -94,28 +97,29 @@ public class BurpExtender implements BurpExtension {
     }
 
     private RegisteredComponents registerComponents(MontoyaApi api, GitleaksConfiguration config,
-            PluginSettings settings) {
-        TemplateManager templateManager = new TemplateManager(api.logging());
+            PluginSettings settings, TemplateManager templateManager) {
         this.issuesTab = new IssuesTab(api, ISSUES_TAB_NAME, templateManager);
 
         if (settings.isShowIssuesTab()) {
             registerIssuesTab();
         }
 
-        GitleaksScanCheck scanCheck = new GitleaksScanCheck(api, config, settings, issuesTab);
+        GitleaksScanCheck scanCheck = new GitleaksScanCheck(api, config, settings);
 
         BurpSuiteEdition edition = api.burpSuite().version().edition();
 
         if (edition == BurpSuiteEdition.COMMUNITY_EDITION) {
             api.logging().logToOutput("Community Edition detected: Activating manual traffic handler.");
-            this.communityHttpHandler = new GitleaksHttpHandler(api, scanCheck, settings);
+            this.communityHttpHandler = new GitleaksHttpHandler(api, scanCheck, settings, issuesTab);
             api.http().registerHttpHandler(communityHttpHandler);
         } else {
             api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
+            GitleaksAuditIssueHandler auditHandler = new GitleaksAuditIssueHandler(issuesTab, settings);
+            api.scanner().registerAuditIssueHandler(auditHandler);
         }
 
         GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings,
-                templateManager);
+                templateManager, issuesTab);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
         SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), (visible) -> {

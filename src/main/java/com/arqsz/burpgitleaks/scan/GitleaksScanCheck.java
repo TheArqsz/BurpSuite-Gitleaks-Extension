@@ -13,7 +13,6 @@ import com.arqsz.burpgitleaks.config.GitleaksAllowlist;
 import com.arqsz.burpgitleaks.config.GitleaksRule;
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
-import com.arqsz.burpgitleaks.ui.IssuesTab;
 import com.arqsz.burpgitleaks.utils.Entropy;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
@@ -49,7 +48,6 @@ public class GitleaksScanCheck implements PassiveScanCheck {
     private final PluginSettings settings;
     private final Logging logging;
     private final MontoyaApi api;
-    private final IssuesTab issuesTab;
 
     private record ScanState(
             List<GitleaksRule> rules,
@@ -57,12 +55,10 @@ public class GitleaksScanCheck implements PassiveScanCheck {
             Trie keywordTrie) {
     }
 
-    public GitleaksScanCheck(MontoyaApi api, GitleaksConfiguration config, PluginSettings settings,
-            IssuesTab issuesTab) {
+    public GitleaksScanCheck(MontoyaApi api, GitleaksConfiguration config, PluginSettings settings) {
         this.api = api;
         this.logging = api.logging();
         this.settings = settings;
-        this.issuesTab = issuesTab;
         updateConfig(config);
     }
 
@@ -301,10 +297,6 @@ public class GitleaksScanCheck implements PassiveScanCheck {
                 ISSUE_BACKGROUND,
                 AuditIssueSeverity.HIGH,
                 baseReq.withResponseMarkers(markers));
-
-        if (settings.isShowIssuesTab()) {
-            issuesTab.addIssue(issue);
-        }
 
         return issue;
     }

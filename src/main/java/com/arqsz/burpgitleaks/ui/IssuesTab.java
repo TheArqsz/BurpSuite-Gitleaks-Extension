@@ -58,7 +58,6 @@ public class IssuesTab extends JPanel {
     private final HttpResponseEditor responseViewer;
     private final JEditorPane advisoryPane;
 
-    private final TemplateManager templateManager;
     private final VerificationMenuFactory menuFactory;
 
     private String tabTitle;
@@ -74,7 +73,6 @@ public class IssuesTab extends JPanel {
             this.tabTitle = tabTitle;
         }
 
-        this.templateManager = templateManager;
         this.menuFactory = new VerificationMenuFactory(api, templateManager);
 
         this.model = new IssuesTableModel();
@@ -228,13 +226,30 @@ public class IssuesTab extends JPanel {
         });
     }
 
-    public void addIssue(AuditIssue issue) {
-        SwingUtilities.invokeLater(() -> {
+    public boolean addIssue(AuditIssue issue) {
+        if (SwingUtilities.isEventDispatchThread()) {
             boolean added = model.add(issue);
             if (added) {
                 updateTabTitle(model.getRowCount());
             }
-        });
+            return added;
+        }
+
+        final boolean[] result = new boolean[1];
+
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                result[0] = model.add(issue);
+                if (result[0]) {
+                    updateTabTitle(model.getRowCount());
+                }
+            });
+        } catch (Exception e) {
+            api.logging().logToError("Error adding issue to tab: " + e.getMessage());
+            return false;
+        }
+
+        return result[0];
     }
 
     private void deleteSelectedIssues() {

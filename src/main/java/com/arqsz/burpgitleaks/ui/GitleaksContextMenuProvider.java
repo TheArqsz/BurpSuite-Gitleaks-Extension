@@ -16,6 +16,7 @@ import com.arqsz.burpgitleaks.utils.IssueUtils;
 import com.arqsz.burpgitleaks.verification.TemplateManager;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.scanner.AuditResult;
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
@@ -31,12 +32,14 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
     private final ExecutorService executor;
     private final PluginSettings settings;
     private final VerificationMenuFactory menuFactory;
+    private final IssuesTab issuesTab;
 
     public GitleaksContextMenuProvider(MontoyaApi api, GitleaksScanCheck scanCheck,
-            PluginSettings settings, TemplateManager templateManager) {
+            PluginSettings settings, TemplateManager templateManager, IssuesTab issuesTab) {
         this.api = api;
         this.scanCheck = scanCheck;
         this.settings = settings;
+        this.issuesTab = issuesTab;
         this.executor = Executors.newSingleThreadExecutor();
         this.menuFactory = new VerificationMenuFactory(api, templateManager);
     }
@@ -100,16 +103,27 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
             }
 
             for (AuditIssue newIssue : result.auditIssues()) {
-                if (isAlreadyReported(newIssue)) {
+                boolean addedToTab = false;
+                if (settings.isShowIssuesTab()) {
+                    addedToTab = issuesTab.addIssue(newIssue);
+                }
+
+                boolean alreadyInSiteMap = isAlreadyReported(newIssue);
+
+                if (!alreadyInSiteMap) {
+                    api.siteMap().add(newIssue);
+                }
+
+                api.logging().logToOutput("Manual scan found issue: " + alreadyInSiteMap);
+
+                if (!alreadyInSiteMap || addedToTab) {
+                    issuesFound++;
+                } else {
                     duplicatesIgnored++;
                     if (settings.isDebugEnabled()) {
                         api.logging().logToOutput("Ignored duplicate: " + newIssue.name() + " @ " + newIssue.baseUrl());
                     }
-                    continue;
                 }
-
-                api.siteMap().add(newIssue);
-                issuesFound++;
             }
         }
 
@@ -152,6 +166,10 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
     }
 
     private boolean isAlreadyReported(AuditIssue newIssue) {
+        if (api.burpSuite().version().edition() == BurpSuiteEdition.COMMUNITY_EDITION) {
+            return true;
+        }
+
         List<AuditIssue> existingIssues = api.siteMap().issues(
                 SiteMapFilter.prefixFilter(newIssue.baseUrl()));
 

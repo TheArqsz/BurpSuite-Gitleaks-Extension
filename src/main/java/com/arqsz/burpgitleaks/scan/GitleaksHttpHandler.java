@@ -4,6 +4,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.arqsz.burpgitleaks.config.PluginSettings;
+import com.arqsz.burpgitleaks.ui.IssuesTab;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ToolType;
@@ -22,11 +23,14 @@ public class GitleaksHttpHandler implements HttpHandler {
     private final GitleaksScanCheck scanCheck;
     private final PluginSettings settings;
     private final ExecutorService executor;
+    private final IssuesTab issuesTab;
 
-    public GitleaksHttpHandler(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings) {
+    public GitleaksHttpHandler(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings,
+            IssuesTab issuesTab) {
         this.api = api;
         this.scanCheck = scanCheck;
         this.settings = settings;
+        this.issuesTab = issuesTab;
         this.executor = Executors.newFixedThreadPool(3);
     }
 
@@ -65,6 +69,10 @@ public class GitleaksHttpHandler implements HttpHandler {
 
         for (AuditIssue issue : result.auditIssues()) {
             api.siteMap().add(issue);
+
+            if (settings.isShowIssuesTab()) {
+                issuesTab.addIssue(issue);
+            }
         }
     }
 
