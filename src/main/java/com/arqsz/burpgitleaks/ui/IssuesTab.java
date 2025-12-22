@@ -13,9 +13,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
@@ -60,6 +60,8 @@ public class IssuesTab extends JPanel {
 
     private final VerificationMenuFactory menuFactory;
 
+    private final Set<String> threadSafeSignatures = ConcurrentHashMap.newKeySet();
+
     private String tabTitle;
     private static final String DEFAULT_TAB_TITLE = "Gitleaks Issues";
 
@@ -85,6 +87,7 @@ public class IssuesTab extends JPanel {
 
         JButton clearBtn = new JButton("Clear Issues");
         clearBtn.addActionListener(e -> {
+            threadSafeSignatures.clear();
             model.clear();
             resetViewers();
             updateTabTitle(0);
@@ -106,7 +109,18 @@ public class IssuesTab extends JPanel {
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(0).setPreferredWidth(40);
 
-        table.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        table.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (value instanceof LocalDateTime) {
+                    setText(TIMESTAMP_FORMAT.format((LocalDateTime) value));
+                }
+                setHorizontalAlignment(JLabel.CENTER);
+                return this;
+            }
+        });
         table.getColumnModel().getColumn(1).setMaxWidth(150);
         table.getColumnModel().getColumn(1).setPreferredWidth(100);
 
@@ -227,29 +241,23 @@ public class IssuesTab extends JPanel {
     }
 
     public boolean addIssue(AuditIssue issue) {
-        if (SwingUtilities.isEventDispatchThread()) {
-            boolean added = model.add(issue);
-            if (added) {
-                updateTabTitle(model.getRowCount());
-            }
-            return added;
-        }
-
-        final boolean[] result = new boolean[1];
-
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                result[0] = model.add(issue);
-                if (result[0]) {
-                    updateTabTitle(model.getRowCount());
-                }
-            });
-        } catch (Exception e) {
-            api.logging().logToError("Error adding issue to tab: " + e.getMessage());
+        String sig = generateSignature(issue);
+        if (threadSafeSignatures.contains(sig)) {
             return false;
         }
+        threadSafeSignatures.add(sig);
 
-        return result[0];
+        SwingUtilities.invokeLater(() -> {
+            model.addEntry(issue);
+            updateTabTitle(model.getRowCount());
+        });
+
+        return true;
+    }
+
+    private String generateSignature(AuditIssue i) {
+        String detailPart = (i.detail() != null) ? String.valueOf(i.detail().hashCode()) : "0";
+        return i.name() + "|" + i.baseUrl() + "|" + detailPart;
     }
 
     private void deleteSelectedIssues() {
@@ -263,7 +271,13 @@ public class IssuesTab extends JPanel {
                 .toArray();
 
         for (int i = modelRows.length - 1; i >= 0; i--) {
-            model.removeRow(modelRows[i]);
+            int rowIndex = modelRows[i];
+
+            AuditIssue issue = model.getIssue(rowIndex);
+            String sig = generateSignature(issue);
+            threadSafeSignatures.remove(sig);
+
+            model.removeRow(rowIndex);
         }
 
         updateTabTitle(model.getRowCount());
@@ -491,34 +505,22 @@ public class IssuesTab extends JPanel {
         }
     }
 
-    private record IssueEntry(int id, String timestamp, AuditIssue issue) {
+    private record IssueEntry(int id, LocalDateTime timestamp, AuditIssue issue) {
     }
 
     private static class IssuesTableModel extends AbstractTableModel {
         private final List<IssueEntry> entries = new ArrayList<>();
-        private final Set<String> issueSignatures = new HashSet<>();
         private int nextId = 1;
         private final String[] cols = { "#", "Time", "Name", "URL", "Severity", "Confidence" };
 
-        public boolean add(AuditIssue issue) {
-            String sig = generateSignature(issue);
-            if (!issueSignatures.contains(sig)) {
-                issueSignatures.add(sig);
-                String now = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-                entries.add(new IssueEntry(nextId++, now, issue));
-                fireTableRowsInserted(entries.size() - 1, entries.size() - 1);
-                return true;
-            }
-            return false;
+        public void addEntry(AuditIssue issue) {
+            String now = LocalDateTime.now().format(TIMESTAMP_FORMAT);
+            entries.add(new IssueEntry(nextId++, LocalDateTime.now(), issue));
+            fireTableRowsInserted(entries.size() - 1, entries.size() - 1);
         }
 
         public void removeRow(int row) {
             if (row >= 0 && row < entries.size()) {
-                IssueEntry entry = entries.get(row);
-
-                String sig = generateSignature(entry.issue());
-                issueSignatures.remove(sig);
-
                 entries.remove(row);
                 fireTableRowsDeleted(row, row);
             }
@@ -526,14 +528,8 @@ public class IssuesTab extends JPanel {
 
         public void clear() {
             entries.clear();
-            issueSignatures.clear();
             nextId = 1;
             fireTableDataChanged();
-        }
-
-        private String generateSignature(AuditIssue i) {
-            String detailPart = (i.detail() != null) ? String.valueOf(i.detail().hashCode()) : "0";
-            return i.name() + "|" + i.baseUrl() + "|" + detailPart;
         }
 
         public AuditIssue getIssue(int row) {
@@ -553,6 +549,16 @@ public class IssuesTab extends JPanel {
         @Override
         public String getColumnName(int col) {
             return cols[col];
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            if (columnIndex == 0) {
+                return Integer.class;
+            } else if (columnIndex == 1) {
+                return LocalDateTime.class;
+            }
+            return String.class;
         }
 
         @Override

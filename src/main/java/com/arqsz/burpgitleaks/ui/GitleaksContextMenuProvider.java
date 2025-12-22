@@ -114,8 +114,6 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
                     api.siteMap().add(newIssue);
                 }
 
-                api.logging().logToOutput("Manual scan found issue: " + alreadyInSiteMap);
-
                 if (!alreadyInSiteMap || addedToTab) {
                     issuesFound++;
                 } else {
