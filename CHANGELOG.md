@@ -1,3 +1,20 @@
+## [0.5.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.4.1...v0.5.0) (2025-12-22)
+
+
+### Features
+
+* **ui:** add verifiable indicators and editable issue properties ([2135cf5](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/2135cf5a5655ef48dd90e5df767b51c74e138853))
+
+
+### Bug Fixes
+
+* **core:** normalize rule keywords and optimize base64 decoding ([f5b5a03](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/f5b5a03a4716d26657c001eb132436a2244cff7d))
+
+
+### Performance Improvements
+
+* **ui:** decouple scan thread from EDT and fix custom issues table logic ([061bba9](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/061bba90fbc5ab02d4e5e9a795ade28b6c3254f4))
+
 ## [0.4.1](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.4.0...v0.4.1) (2025-12-21)
 
 
