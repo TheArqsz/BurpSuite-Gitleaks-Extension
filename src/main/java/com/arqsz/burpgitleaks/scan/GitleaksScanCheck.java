@@ -357,12 +357,20 @@ public class GitleaksScanCheck implements PassiveScanCheck {
     }
 
     private boolean isPrintable(String s) {
-        if (s.isEmpty())
+        if (s == null || s.isEmpty())
             return false;
-        long controlChars = s.chars()
-                .filter(c -> (c < 32 && c != '\n' && c != '\r' && c != '\t') || c > 126)
-                .count();
-        return (double) controlChars / s.length() < 0.3;
+
+        int controlChars = 0;
+        int len = s.length();
+
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            if ((c < 32 && c != '\n' && c != '\r' && c != '\t') || c > 126) {
+                controlChars++;
+            }
+        }
+
+        return (double) controlChars / len < 0.3;
     }
 
     private String extractLine(String body, int start, int end) {

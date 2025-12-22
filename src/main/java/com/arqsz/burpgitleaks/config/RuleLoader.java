@@ -164,7 +164,9 @@ public class RuleLoader {
         String regex = t.getString("regex");
         String path = t.getString("path");
 
-        List<String> keywords = toList(t.getArray("keywords"));
+        List<String> keywords = toList(t.getArray("keywords")).stream()
+                .map(String::toLowerCase)
+                .toList();
 
         List<GitleaksAllowlist> localAllowlists = extractAllowlists(t, "Rule Allowlist (" + id + ")");
 
