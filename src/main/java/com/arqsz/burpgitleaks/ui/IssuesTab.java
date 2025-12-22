@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -45,6 +47,7 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.Marker;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
+import burp.api.montoya.scanner.audit.issues.AuditIssueConfidence;
 import burp.api.montoya.scanner.audit.issues.AuditIssueSeverity;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.HttpResponseEditor;
@@ -98,6 +101,13 @@ public class IssuesTab extends JPanel {
         add(topPanel, BorderLayout.NORTH);
 
         table = new JTable(model);
+
+        JComboBox<AuditIssueSeverity> severityCombo = new JComboBox<>(AuditIssueSeverity.values());
+        table.getColumnModel().getColumn(4).setCellEditor(new DefaultCellEditor(severityCombo));
+
+        JComboBox<AuditIssueConfidence> confidenceCombo = new JComboBox<>(AuditIssueConfidence.values());
+        table.getColumnModel().getColumn(5).setCellEditor(new DefaultCellEditor(confidenceCombo));
+
         table.setAutoCreateRowSorter(true);
         table.setFillsViewportHeight(true);
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -157,13 +167,17 @@ public class IssuesTab extends JPanel {
         JMenuItem copyUrl = new JMenuItem("Copy URL");
         copyUrl.addActionListener(e -> copySelectedUrls());
 
-        JMenuItem deleteItem = new JMenuItem("Delete Selected Issue(s)");
+        JMenuItem deleteItem = new JMenuItem("Delete selected issue(s)");
         deleteItem.addActionListener(e -> deleteSelectedIssues());
+
+        JMenuItem restoreItem = new JMenuItem("Restore original value");
+        restoreItem.addActionListener(e -> restoreSelectedDefaults());
 
         popupMenu.add(sendToRepeater);
         popupMenu.add(copyUrl);
         popupMenu.addSeparator();
         popupMenu.add(deleteItem);
+        popupMenu.add(restoreItem);
 
         final int staticItemCount = popupMenu.getComponentCount();
 
@@ -238,6 +252,17 @@ public class IssuesTab extends JPanel {
                 }
             }
         });
+    }
+
+    private void restoreSelectedDefaults() {
+        int[] selectedRows = table.getSelectedRows();
+        if (selectedRows.length == 0)
+            return;
+
+        for (int viewRow : selectedRows) {
+            int modelRow = table.convertRowIndexToModel(viewRow);
+            model.restoreDefaults(modelRow);
+        }
     }
 
     public boolean addIssue(AuditIssue issue) {
@@ -505,7 +530,30 @@ public class IssuesTab extends JPanel {
         }
     }
 
-    private record IssueEntry(int id, LocalDateTime timestamp, AuditIssue issue) {
+    private static class IssueEntry {
+        final int id;
+        final LocalDateTime timestamp;
+        final AuditIssue originalIssue;
+
+        AuditIssueSeverity userSeverity;
+        AuditIssueConfidence userConfidence;
+
+        public IssueEntry(int id, LocalDateTime timestamp, AuditIssue issue) {
+            this.id = id;
+            this.timestamp = timestamp;
+            this.originalIssue = issue;
+            this.userSeverity = issue.severity();
+            this.userConfidence = issue.confidence();
+        }
+
+        public void reset() {
+            this.userSeverity = originalIssue.severity();
+            this.userConfidence = originalIssue.confidence();
+        }
+
+        public AuditIssue issue() {
+            return originalIssue;
+        }
     }
 
     private static class IssuesTableModel extends AbstractTableModel {
@@ -526,6 +574,14 @@ public class IssuesTab extends JPanel {
             }
         }
 
+        public void restoreDefaults(int row) {
+            if (row >= 0 && row < entries.size()) {
+                entries.get(row).reset();
+                fireTableCellUpdated(row, 4);
+                fireTableCellUpdated(row, 5);
+            }
+        }
+
         public void clear() {
             entries.clear();
             nextId = 1;
@@ -534,6 +590,11 @@ public class IssuesTab extends JPanel {
 
         public AuditIssue getIssue(int row) {
             return entries.get(row).issue();
+        }
+
+        @Override
+        public boolean isCellEditable(int rowIndex, int columnIndex) {
+            return columnIndex == 4 || columnIndex == 5;
         }
 
         @Override
@@ -562,22 +623,34 @@ public class IssuesTab extends JPanel {
         }
 
         @Override
+        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+            IssueEntry e = entries.get(rowIndex);
+            if (columnIndex == 4 && aValue instanceof AuditIssueSeverity) {
+                e.userSeverity = (AuditIssueSeverity) aValue;
+                fireTableCellUpdated(rowIndex, columnIndex);
+            } else if (columnIndex == 5 && aValue instanceof AuditIssueConfidence) {
+                e.userConfidence = (AuditIssueConfidence) aValue;
+                fireTableCellUpdated(rowIndex, columnIndex);
+            }
+        }
+
+        @Override
         public Object getValueAt(int row, int col) {
             IssueEntry e = entries.get(row);
-            AuditIssue i = e.issue();
+            AuditIssue i = e.originalIssue;
             switch (col) {
                 case 0:
-                    return e.id();
+                    return e.id;
                 case 1:
-                    return e.timestamp();
+                    return e.timestamp;
                 case 2:
                     return i.name();
                 case 3:
                     return i.baseUrl();
                 case 4:
-                    return i.severity().name();
+                    return e.userSeverity.name();
                 case 5:
-                    return i.confidence().name();
+                    return e.userConfidence.name();
                 default:
                     return "";
             }

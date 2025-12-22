@@ -122,7 +122,7 @@ public class BurpExtender implements BurpExtension {
                 templateManager, issuesTab);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
-        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), (visible) -> {
+        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), templateManager, (visible) -> {
             if (visible)
                 registerIssuesTab();
             else

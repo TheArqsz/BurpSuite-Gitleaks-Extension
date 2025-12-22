@@ -2,6 +2,7 @@ package com.arqsz.burpgitleaks.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -39,6 +40,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 
 import com.arqsz.burpgitleaks.config.GitleaksRule;
@@ -46,6 +48,7 @@ import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
 import com.arqsz.burpgitleaks.scan.GitleaksScanCheck;
+import com.arqsz.burpgitleaks.verification.TemplateManager;
 
 import burp.api.montoya.MontoyaApi;
 
@@ -55,6 +58,7 @@ public class SettingsTab extends JPanel {
     private final GitleaksScanCheck scanCheck;
     private final PluginSettings settings;
     private final ExecutorService executor;
+    private final TemplateManager templateManager;
     private final RulesTableModel rulesModel;
     private List<GitleaksRule> currentRules;
 
@@ -73,13 +77,15 @@ public class SettingsTab extends JPanel {
     private final Consumer<Boolean> onIssuesTabVisibilityChange;
 
     public SettingsTab(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings,
-            List<GitleaksRule> initialRules, Consumer<Boolean> onIssuesTabVisibilityChange) {
+            List<GitleaksRule> initialRules, TemplateManager templateManager,
+            Consumer<Boolean> onIssuesTabVisibilityChange) {
         this.api = api;
         this.scanCheck = scanCheck;
         this.settings = settings;
+        this.templateManager = templateManager;
         this.currentRules = initialRules;
         this.onIssuesTabVisibilityChange = onIssuesTabVisibilityChange;
-        this.rulesModel = new RulesTableModel(initialRules, settings.getDisabledRules());
+        this.rulesModel = new RulesTableModel(initialRules, settings.getDisabledRules(), templateManager);
         this.executor = Executors.newSingleThreadExecutor();
 
         setLayout(new BorderLayout());
@@ -280,6 +286,8 @@ public class SettingsTab extends JPanel {
         table.setFillsViewportHeight(true);
         table.setRowHeight(24);
 
+        table.setDefaultRenderer(Boolean.class, new BooleanRenderer());
+
         JPopupMenu popup = new JPopupMenu();
         addCopyMenuItem(popup, table, "Copy Source", 1);
         addCopyMenuItem(popup, table, "Copy Rule ID", 2);
@@ -316,7 +324,8 @@ public class SettingsTab extends JPanel {
         table.getColumnModel().getColumn(1).setPreferredWidth(100);
         table.getColumnModel().getColumn(1).setMaxWidth(350);
         table.getColumnModel().getColumn(2).setPreferredWidth(200);
-        table.getColumnModel().getColumn(3).setPreferredWidth(400);
+        table.getColumnModel().getColumn(3).setMaxWidth(80);
+        table.getColumnModel().getColumn(4).setPreferredWidth(400);
 
         p.add(new JScrollPane(table), BorderLayout.CENTER);
 
@@ -560,11 +569,13 @@ public class SettingsTab extends JPanel {
     }
 
     private static class RulesTableModel extends AbstractTableModel {
-        private final String[] cols = { "Enabled", "Source", "Rule ID", "Description" };
+        private final String[] cols = { "Enabled", "Source", "Rule ID", "Verifiable", "Description" };
         private List<GitleaksRule> rules;
         private List<Boolean> enabledState;
+        private final TemplateManager templateManager;
 
-        public RulesTableModel(List<GitleaksRule> rules, List<String> disabledIds) {
+        public RulesTableModel(List<GitleaksRule> rules, List<String> disabledIds, TemplateManager templateManager) {
+            this.templateManager = templateManager;
             setRules(rules, disabledIds);
         }
 
@@ -603,7 +614,7 @@ public class SettingsTab extends JPanel {
 
         @Override
         public Class<?> getColumnClass(int col) {
-            return col == 0 ? Boolean.class : String.class;
+            return (col == 0 || col == 3) ? Boolean.class : String.class;
         }
 
         @Override
@@ -622,6 +633,8 @@ public class SettingsTab extends JPanel {
                 case 2:
                     return rule.getId();
                 case 3:
+                    return templateManager.hasTemplate(rule.getId());
+                case 4:
                     return rule.getDescription();
                 default:
                     return null;
@@ -633,6 +646,43 @@ public class SettingsTab extends JPanel {
             if (col == 0)
                 enabledState.set(row, Boolean.TRUE.equals(val));
             fireTableCellUpdated(row, col);
+        }
+    }
+
+    private static class BooleanRenderer extends JPanel implements TableCellRenderer {
+        private final JCheckBox checkBox = new JCheckBox();
+
+        public BooleanRenderer() {
+            super(new GridBagLayout());
+
+            setOpaque(true);
+            checkBox.setOpaque(false);
+            checkBox.setHorizontalAlignment(JLabel.CENTER);
+
+            add(checkBox);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+                checkBox.setForeground(table.getSelectionForeground());
+            } else {
+                Color alternateColor = UIManager.getColor("Table.alternateRowColor");
+                if (alternateColor != null && row % 2 != 0) {
+                    setBackground(alternateColor);
+                } else {
+                    setBackground(table.getBackground());
+                }
+
+                checkBox.setForeground(table.getForeground());
+            }
+
+            checkBox.setSelected(value != null && (Boolean) value);
+
+            return this;
         }
     }
 }
