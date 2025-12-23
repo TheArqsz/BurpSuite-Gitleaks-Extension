@@ -1,3 +1,10 @@
+## [0.6.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.5.0...v0.6.0) (2025-12-23)
+
+
+### Features
+
+* **ui:** implement persistent issue storage with user overrides ([16ce4f7](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/commit/16ce4f7cc5e88963d043b2420f94597373383331))
+
 ## [0.5.0](https://github.com/TheArqsz/BurpSuite-Gitleaks-Extension/compare/v0.4.1...v0.5.0) (2025-12-22)
 
 
