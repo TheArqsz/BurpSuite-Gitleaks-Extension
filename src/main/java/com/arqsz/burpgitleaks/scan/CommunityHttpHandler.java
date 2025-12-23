@@ -17,7 +17,7 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.scanner.AuditResult;
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
 
-public class GitleaksHttpHandler implements HttpHandler {
+public class CommunityHttpHandler implements HttpHandler {
 
     private final MontoyaApi api;
     private final GitleaksScanCheck scanCheck;
@@ -25,7 +25,7 @@ public class GitleaksHttpHandler implements HttpHandler {
     private final ExecutorService executor;
     private final IssuesTab issuesTab;
 
-    public GitleaksHttpHandler(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings,
+    public CommunityHttpHandler(MontoyaApi api, GitleaksScanCheck scanCheck, PluginSettings settings,
             IssuesTab issuesTab) {
         this.api = api;
         this.scanCheck = scanCheck;

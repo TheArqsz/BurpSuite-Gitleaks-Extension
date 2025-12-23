@@ -70,7 +70,7 @@ public class GitleaksScanCheck implements PassiveScanCheck {
 
     @Override
     public String checkName() {
-        return "Gitleaks Passive Check";
+        return "Secret Scanning Passive Check";
     }
 
     @Override

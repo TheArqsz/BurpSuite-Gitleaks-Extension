@@ -25,7 +25,7 @@ import burp.api.montoya.ui.contextmenu.AuditIssueContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
 
-public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
+public class ContextMenuProvider implements ContextMenuItemsProvider {
 
     private final MontoyaApi api;
     private final GitleaksScanCheck scanCheck;
@@ -34,7 +34,7 @@ public class GitleaksContextMenuProvider implements ContextMenuItemsProvider {
     private final VerificationMenuFactory menuFactory;
     private final IssuesTab issuesTab;
 
-    public GitleaksContextMenuProvider(MontoyaApi api, GitleaksScanCheck scanCheck,
+    public ContextMenuProvider(MontoyaApi api, GitleaksScanCheck scanCheck,
             PluginSettings settings, TemplateManager templateManager, IssuesTab issuesTab) {
         this.api = api;
         this.scanCheck = scanCheck;

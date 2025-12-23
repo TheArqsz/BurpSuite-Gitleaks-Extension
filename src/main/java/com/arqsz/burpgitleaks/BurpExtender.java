@@ -7,10 +7,10 @@ import javax.swing.SwingUtilities;
 import com.arqsz.burpgitleaks.config.PluginSettings;
 import com.arqsz.burpgitleaks.config.RuleLoader;
 import com.arqsz.burpgitleaks.config.RuleLoader.GitleaksConfiguration;
-import com.arqsz.burpgitleaks.scan.GitleaksAuditIssueHandler;
-import com.arqsz.burpgitleaks.scan.GitleaksHttpHandler;
+import com.arqsz.burpgitleaks.scan.CommunityHttpHandler;
+import com.arqsz.burpgitleaks.scan.CustomAuditIssueHandler;
 import com.arqsz.burpgitleaks.scan.GitleaksScanCheck;
-import com.arqsz.burpgitleaks.ui.GitleaksContextMenuProvider;
+import com.arqsz.burpgitleaks.ui.ContextMenuProvider;
 import com.arqsz.burpgitleaks.ui.IssuesTab;
 import com.arqsz.burpgitleaks.ui.SettingsTab;
 import com.arqsz.burpgitleaks.ui.Toast;
@@ -33,7 +33,7 @@ public class BurpExtender implements BurpExtension {
     private Registration issuesTabRegistration;
     private TemplateManager templateManager;
 
-    private GitleaksHttpHandler communityHttpHandler;
+    private CommunityHttpHandler communityHttpHandler;
 
     @Override
     public void initialize(MontoyaApi api) {
@@ -67,7 +67,7 @@ public class BurpExtender implements BurpExtension {
     private record ConfigResult(GitleaksConfiguration config, String errorMsg) {
     }
 
-    private record RegisteredComponents(SettingsTab settingsTab, GitleaksContextMenuProvider menuProvider,
+    private record RegisteredComponents(SettingsTab settingsTab, ContextMenuProvider menuProvider,
             IssuesTab issuesTab) {
     }
 
@@ -110,24 +110,25 @@ public class BurpExtender implements BurpExtension {
 
         if (edition == BurpSuiteEdition.COMMUNITY_EDITION) {
             api.logging().logToOutput("Community Edition detected: Activating manual traffic handler.");
-            this.communityHttpHandler = new GitleaksHttpHandler(api, scanCheck, settings, issuesTab);
+            this.communityHttpHandler = new CommunityHttpHandler(api, scanCheck, settings, issuesTab);
             api.http().registerHttpHandler(communityHttpHandler);
         } else {
             api.scanner().registerPassiveScanCheck(scanCheck, ScanCheckType.PER_REQUEST);
-            GitleaksAuditIssueHandler auditHandler = new GitleaksAuditIssueHandler(issuesTab, settings);
+            CustomAuditIssueHandler auditHandler = new CustomAuditIssueHandler(issuesTab, settings);
             api.scanner().registerAuditIssueHandler(auditHandler);
         }
 
-        GitleaksContextMenuProvider menuProvider = new GitleaksContextMenuProvider(api, scanCheck, settings,
+        ContextMenuProvider menuProvider = new ContextMenuProvider(api, scanCheck, settings,
                 templateManager, issuesTab);
         api.userInterface().registerContextMenuItemsProvider(menuProvider);
 
-        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), templateManager, (visible) -> {
-            if (visible)
-                registerIssuesTab();
-            else
-                deregisterIssuesTab();
-        });
+        SettingsTab settingsTab = new SettingsTab(api, scanCheck, settings, config.rules(), templateManager,
+                (visible) -> {
+                    if (visible)
+                        registerIssuesTab();
+                    else
+                        deregisterIssuesTab();
+                });
         api.userInterface().registerSuiteTab(EXTENSION_TAB_NAME, settingsTab);
 
         return new RegisteredComponents(settingsTab, menuProvider, issuesTab);

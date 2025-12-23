@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.lang.reflect.Type;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -42,6 +43,8 @@ import javax.swing.table.TableRowSorter;
 
 import com.arqsz.burpgitleaks.utils.IssueUtils;
 import com.arqsz.burpgitleaks.verification.TemplateManager;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.Marker;
@@ -64,11 +67,16 @@ public class IssuesTab extends JPanel {
     private final VerificationMenuFactory menuFactory;
 
     private final Set<String> threadSafeSignatures = ConcurrentHashMap.newKeySet();
+    private final java.util.concurrent.ExecutorService persistenceExecutor = java.util.concurrent.Executors
+            .newSingleThreadExecutor();
 
     private String tabTitle;
     private static final String DEFAULT_TAB_TITLE = "Gitleaks Issues";
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss dd MMM yyyy");
+
+    private final Gson gson = new Gson();
+    private static final String STORAGE_KEY = "gitleaks_integration_issues";
 
     public IssuesTab(MontoyaApi api, String tabTitle, TemplateManager templateManager) {
         this.api = api;
@@ -80,7 +88,7 @@ public class IssuesTab extends JPanel {
 
         this.menuFactory = new VerificationMenuFactory(api, templateManager);
 
-        this.model = new IssuesTableModel();
+        this.model = new IssuesTableModel(this::saveIssuesToProject);
 
         setLayout(new BorderLayout());
 
@@ -94,6 +102,8 @@ public class IssuesTab extends JPanel {
             model.clear();
             resetViewers();
             updateTabTitle(0);
+
+            saveIssuesToProject();
         });
         topPanel.add(filterField);
         topPanel.add(clearBtn);
@@ -252,6 +262,72 @@ public class IssuesTab extends JPanel {
                 }
             }
         });
+        loadIssuesFromProject();
+    }
+
+    private void loadIssuesFromProject() {
+        String json = api.persistence().extensionData().getString(STORAGE_KEY);
+        if (json == null || json.isEmpty())
+            return;
+
+        try {
+            Type listType = new TypeToken<List<SavedIssue>>() {
+            }.getType();
+            List<SavedIssue> savedList = gson.fromJson(json, listType);
+
+            if (savedList != null) {
+                for (SavedIssue saved : savedList) {
+                    AuditIssue originalAuditIssue = saved.toAuditIssue(api);
+
+                    AuditIssueSeverity sev = saved.overrideSeverity != null
+                            ? AuditIssueSeverity.valueOf(saved.overrideSeverity)
+                            : null;
+                    AuditIssueConfidence conf = saved.overrideConfidence != null
+                            ? AuditIssueConfidence.valueOf(saved.overrideConfidence)
+                            : null;
+                    LocalDateTime time = null;
+                    if (saved.timestamp != null) {
+                        try {
+                            time = LocalDateTime.parse(saved.timestamp);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    addIssueInternal(originalAuditIssue, sev, conf, time);
+                }
+            }
+            updateTabTitle(model.getRowCount());
+        } catch (Exception e) {
+            api.logging().logToError("Failed to load saved issues: " + e.getMessage());
+        }
+    }
+
+    private void saveIssuesToProject() {
+        SwingUtilities.invokeLater(() -> {
+            List<SavedIssue> toSave = new ArrayList<>();
+            for (int i = 0; i < model.getRowCount(); i++) {
+                IssueEntry entry = model.getEntry(i);
+                SavedIssue saved = new SavedIssue(entry.originalIssue, entry.timestamp);
+
+                if (entry.timestamp != null) {
+                    saved.timestamp = entry.timestamp.toString();
+                }
+
+                if (entry.userSeverity != entry.originalIssue.severity()) {
+                    saved.overrideSeverity = entry.userSeverity.name();
+                }
+
+                if (entry.userConfidence != entry.originalIssue.confidence()) {
+                    saved.overrideConfidence = entry.userConfidence.name();
+                }
+
+                toSave.add(saved);
+            }
+
+            persistenceExecutor.submit(() -> {
+                String json = gson.toJson(toSave);
+                api.persistence().extensionData().setString(STORAGE_KEY, json);
+            });
+        });
     }
 
     private void restoreSelectedDefaults() {
@@ -266,6 +342,15 @@ public class IssuesTab extends JPanel {
     }
 
     public boolean addIssue(AuditIssue issue) {
+        if (addIssueInternal(issue, null, null, null)) {
+            saveIssuesToProject();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean addIssueInternal(AuditIssue issue, AuditIssueSeverity sevOverride,
+            AuditIssueConfidence confOverride, LocalDateTime timestampOverride) {
         String sig = generateSignature(issue);
         if (threadSafeSignatures.contains(sig)) {
             return false;
@@ -273,10 +358,9 @@ public class IssuesTab extends JPanel {
         threadSafeSignatures.add(sig);
 
         SwingUtilities.invokeLater(() -> {
-            model.addEntry(issue);
+            model.addEntry(issue, sevOverride, confOverride, timestampOverride);
             updateTabTitle(model.getRowCount());
         });
-
         return true;
     }
 
@@ -303,6 +387,7 @@ public class IssuesTab extends JPanel {
             threadSafeSignatures.remove(sig);
 
             model.removeRow(rowIndex);
+            api.siteMap().issues().remove(issue);
         }
 
         updateTabTitle(model.getRowCount());
@@ -310,6 +395,8 @@ public class IssuesTab extends JPanel {
         if (table.getSelectedRow() == -1) {
             resetViewers();
         }
+
+        saveIssuesToProject();
     }
 
     private void sendSelectedToRepeater() {
@@ -519,8 +606,8 @@ public class IssuesTab extends JPanel {
                         c.setForeground(Color.BLACK);
                         break;
                     default:
-                        c.setBackground(Color.WHITE);
-                        c.setForeground(Color.BLACK);
+                        c.setBackground(table.getBackground());
+                        c.setForeground(table.getForeground());
                 }
             } else {
                 c.setFont(c.getFont().deriveFont(Font.BOLD));
@@ -561,9 +648,25 @@ public class IssuesTab extends JPanel {
         private int nextId = 1;
         private final String[] cols = { "#", "Time", "Name", "URL", "Severity", "Confidence" };
 
-        public void addEntry(AuditIssue issue) {
-            String now = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-            entries.add(new IssueEntry(nextId++, LocalDateTime.now(), issue));
+        private final Runnable onDataChanged;
+
+        public IssuesTableModel(Runnable onDataChanged) {
+            this.onDataChanged = onDataChanged;
+        }
+
+        public void addEntry(AuditIssue issue, AuditIssueSeverity sevOverride, AuditIssueConfidence confOverride,
+                LocalDateTime timestampOverride) {
+
+            LocalDateTime ts = (timestampOverride != null) ? timestampOverride : LocalDateTime.now();
+
+            IssueEntry entry = new IssueEntry(nextId++, ts, issue);
+
+            if (sevOverride != null)
+                entry.userSeverity = sevOverride;
+            if (confOverride != null)
+                entry.userConfidence = confOverride;
+
+            entries.add(entry);
             fireTableRowsInserted(entries.size() - 1, entries.size() - 1);
         }
 
@@ -590,6 +693,10 @@ public class IssuesTab extends JPanel {
 
         public AuditIssue getIssue(int row) {
             return entries.get(row).issue();
+        }
+
+        public IssueEntry getEntry(int row) {
+            return entries.get(row);
         }
 
         @Override
@@ -625,12 +732,26 @@ public class IssuesTab extends JPanel {
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             IssueEntry e = entries.get(rowIndex);
+            boolean changed = false;
             if (columnIndex == 4 && aValue instanceof AuditIssueSeverity) {
-                e.userSeverity = (AuditIssueSeverity) aValue;
-                fireTableCellUpdated(rowIndex, columnIndex);
+                AuditIssueSeverity newSev = (AuditIssueSeverity) aValue;
+                if (e.userSeverity != newSev) {
+                    e.userSeverity = newSev;
+                    changed = true;
+                }
             } else if (columnIndex == 5 && aValue instanceof AuditIssueConfidence) {
-                e.userConfidence = (AuditIssueConfidence) aValue;
+                AuditIssueConfidence newConf = (AuditIssueConfidence) aValue;
+                if (e.userConfidence != newConf) {
+                    e.userConfidence = newConf;
+                    changed = true;
+                }
+            }
+
+            if (changed) {
                 fireTableCellUpdated(rowIndex, columnIndex);
+                if (onDataChanged != null) {
+                    onDataChanged.run();
+                }
             }
         }
 

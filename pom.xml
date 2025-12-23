@@ -38,6 +38,12 @@
             <artifactId>ahocorasick</artifactId>
             <version>0.6.3</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.13.2</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -60,6 +66,10 @@
                         <relocation>
                             <pattern>org.ahocorasick</pattern>
                             <shadedPattern>com.arqsz.burpgitleaks.shaded.org.ahocorasick</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.google.code.gson</pattern>
+                            <shadedPattern>com.arqsz.burpgitleaks.shaded.com.google.code.gson</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

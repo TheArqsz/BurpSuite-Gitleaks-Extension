@@ -6,12 +6,12 @@ import com.arqsz.burpgitleaks.ui.IssuesTab;
 import burp.api.montoya.scanner.audit.AuditIssueHandler;
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
 
-public class GitleaksAuditIssueHandler implements AuditIssueHandler {
+public class CustomAuditIssueHandler implements AuditIssueHandler {
 
     private final IssuesTab issuesTab;
     private final PluginSettings settings;
 
-    public GitleaksAuditIssueHandler(IssuesTab issuesTab, PluginSettings settings) {
+    public CustomAuditIssueHandler(IssuesTab issuesTab, PluginSettings settings) {
         this.issuesTab = issuesTab;
         this.settings = settings;
     }
