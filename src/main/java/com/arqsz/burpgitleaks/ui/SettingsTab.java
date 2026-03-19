@@ -16,6 +16,7 @@ import java.awt.datatransfer.StringSelection;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -51,8 +52,9 @@ import com.arqsz.burpgitleaks.scan.GitleaksScanCheck;
 import com.arqsz.burpgitleaks.verification.TemplateManager;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.ui.settings.SettingsPanel;
 
-public class SettingsTab extends JPanel {
+public class SettingsTab extends JPanel implements SettingsPanel {
 
     private final MontoyaApi api;
     private final GitleaksScanCheck scanCheck;
@@ -111,6 +113,16 @@ public class SettingsTab extends JPanel {
 
     public void shutdown() {
         executor.shutdownNow();
+    }
+
+    @Override
+    public javax.swing.JComponent uiComponent() {
+        return this;
+    }
+
+    @Override
+    public Set<String> keywords() {
+        return Set.of("gitleaks", "secrets", "leak", "rules");
     }
 
     private JPanel createConfigPanel() {

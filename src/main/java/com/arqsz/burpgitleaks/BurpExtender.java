@@ -25,7 +25,6 @@ import burp.api.montoya.scanner.scancheck.ScanCheckType;
 public class BurpExtender implements BurpExtension {
 
     private final String EXTENSION_NAME = "Gitleaks Integration";
-    private final String EXTENSION_TAB_NAME = EXTENSION_NAME + " Settings";
     private final String ISSUES_TAB_NAME = EXTENSION_NAME + " Issues";
 
     private MontoyaApi api;
@@ -130,7 +129,7 @@ public class BurpExtender implements BurpExtension {
                     else
                         deregisterIssuesTab();
                 });
-        api.userInterface().registerSuiteTab(EXTENSION_TAB_NAME, settingsTab);
+        api.userInterface().registerSettingsPanel(settingsTab);
 
         return new RegisteredComponents(settingsTab, menuProvider, issuesTab);
     }
