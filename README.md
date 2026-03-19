@@ -104,7 +104,7 @@ Verification steps are mostly inspired by [keyhacks](https://github.com/streaak/
 
 ## Configuration
 
-Navigate to the `Gitleaks Integration Settings` tab in Burp Suite.
+Open Burp Suite Settings and navigate to the `Gitleaks Integration` panel under Extensions.
 
 - **Rule Source** - click "Update" to pull the latest definitions from the official Gitleaks repository.
 - **Custom Config** - specify a local path to a custom `gitleaks.toml` to override or extend the defaults.
