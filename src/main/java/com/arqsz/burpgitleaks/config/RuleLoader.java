@@ -20,6 +20,7 @@ import com.google.re2j.Pattern;
 import com.google.re2j.PatternSyntaxException;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.http.RequestOptions;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.logging.Logging;
 
@@ -64,7 +65,8 @@ public class RuleLoader {
         if (targetUrl == null || targetUrl.isBlank())
             throw new IllegalArgumentException("Update URL cannot be empty");
 
-        var responseObj = api.http().sendRequest(HttpRequest.httpRequestFromUrl(targetUrl));
+        var responseObj = api.http().sendRequest(HttpRequest.httpRequestFromUrl(targetUrl),
+                RequestOptions.requestOptions().withUpstreamTLSVerification());
         var response = responseObj.response();
 
         if (response.statusCode() != 200) {
