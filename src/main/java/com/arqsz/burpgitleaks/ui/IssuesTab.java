@@ -341,6 +341,10 @@ public class IssuesTab extends JPanel {
         }
     }
 
+    public void shutdown() {
+        persistenceExecutor.shutdownNow();
+    }
+
     public boolean addIssue(AuditIssue issue) {
         if (addIssueInternal(issue, null, null, null)) {
             saveIssuesToProject();

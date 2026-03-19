@@ -54,6 +54,7 @@ public class BurpExtender implements BurpExtension {
         api.extension().registerUnloadingHandler(() -> {
             components.settingsTab().shutdown();
             components.menuProvider().shutdown();
+            components.issuesTab().shutdown();
 
             if (communityHttpHandler != null) {
                 communityHttpHandler.shutdown();
