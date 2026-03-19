@@ -78,7 +78,8 @@ public class VerificationMenuFactory {
             textArea.setWrapStyleWord(true);
             JScrollPane scroll = new JScrollPane(textArea);
             scroll.setPreferredSize(new java.awt.Dimension(500, 300));
-            JOptionPane.showMessageDialog(null, scroll, "Verification: " + title, JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(api.userInterface().swingUtils().suiteFrame(), scroll,
+                    "Verification: " + title, JOptionPane.INFORMATION_MESSAGE);
         });
     }
 }
